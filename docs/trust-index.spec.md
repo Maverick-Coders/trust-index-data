@@ -40,6 +40,7 @@ One project serves all three practice buckets:
 | DEC-03 | V1 scope includes claims flow + scorecard lead magnet | Owner decision; launch with demand capture live |
 | DEC-04 | Two-level segment taxonomy: ~12 parents, ~40 children | Benchmarks at parent level, hub pages at both |
 | DEC-05 | Licensing: **open core split** | Core facts CC BY 4.0; enriched layers proprietary (see §8) |
+| DEC-13 | Company summaries: **Wikipedia extract when present, else LLM fallback** | Authoritative neutral prose where an article exists; uniform coverage otherwise. Wikipedia text is CC BY-SA (attributed, kept distinct from the CC BY 4.0 core); LLM-generated summaries are original |
 | DEC-06 | Storage: Parquet snapshots in GCS, lifecycle tiering; BigQuery via external tables (or `bq load`) | Both round to ~$0 at this scale; Parquet is the neutral format |
 | DEC-07 | Common Crawl access: DuckDB reading Parquet over HTTPS (free tier) | Owner accepted slower/free over Athena ~$5-15/refresh |
 | DEC-08 | Refresh cadence: monthly full; corrections deploy on merge | Matches CC crawl rhythm and trust-center churn |
@@ -92,6 +93,7 @@ Spike evidence (2026-08-25): 60k DNS probes → 4,726 resolved hosts, 307 confir
 - **FR-N4**: The pipeline shall compute compliance timelines: earliest observed trust center via Wayback CDX, backfilled from Common Crawl historical indexes, expressed strictly as "first observed".
 - **FR-N5**: The pipeline shall detect GRC hiring signals via public Greenhouse/Lever/Ashby board APIs (titles matching compliance/GRC/security/risk/privacy/trust).
 - **FR-N6**: The pipeline shall classify each organization into the two-level taxonomy (12 parents / ~40 children) via LLM pass over homepage content, corroborated by Wikidata industry; only new/changed organizations re-classify on refresh.
+- **FR-N7**: The pipeline shall attach a one-paragraph company summary: the English Wikipedia extract (resolved via the Wikidata sitelink) when the entity has one, attributed to Wikipedia under CC BY-SA; otherwise an LLM-generated summary grounded in the company's homepage/trust-center content. Each record stores the summary and its `summarySource` (`wikipedia` | `llm`). Only new/changed organizations re-summarize on refresh. (POC: measured coverage was 136 Wikipedia + 176 homepage-grounded of 330; the POC fallback surfaces the homepage/OG description as the grounding text the production LLM pass normalizes.)
 
 ### Merge, Overrides, Publishing
 - **FR-M1**: The pipeline shall merge sources in fixed precedence: base extraction → registry enrichments → overrides layer (highest, per-field).
@@ -104,7 +106,7 @@ Spike evidence (2026-08-25): 60k DNS probes → 4,726 resolved hosts, 307 confir
 ## 5. Functional Requirements — Site (EARS)
 
 - **FR-S1**: The site shall render `/trust-index/{company-slug}` profiles, `/trust-index/segment/{segment}` and `/trust-index/framework/{framework}` hubs, and `/trust-index/reports/{slug}` from the pinned data release via a content collection (`file()` loader, Zod-validated), reusing `Layout.astro`, Navigation, and contact CTA.
-- **FR-S2**: Profile pages shall display: advertised frameworks with as-of date, identity links (sameAs), timeline, hiring signal, subprocessors (bidirectional links), registry cross-references, claim/correct CTA, discovery-call CTA.
+- **FR-S2**: Profile pages shall display: a company summary with a visible source attribution (Wikipedia vs. generated, per FR-N7), market segment (linking to the segment-filtered index), advertised frameworks with as-of date, identity links (sameAs), timeline, hiring signal, subprocessors (bidirectional links), registry cross-references, claim/correct CTA, discovery-call CTA.
 - **FR-S3**: When a data release or override merges, `repository_dispatch` shall trigger a site rebuild (corrections live in minutes; full data monthly).
 - **FR-S4**: Articles shall cross-link profiles via the existing `:::spoke` directive; profiles link related articles by segment.
 - **FR-S5 (SEO, full complement)**: The site shall implement: canonical tags + trailing-slash policy; OG/Twitter cards with og:type per page type; article published/modified meta; JSON-LD per type (Organization+WebSite home; BlogPosting articles; ProfilePage+Organization+sameAs profiles; CollectionPage+ItemList hubs; Dataset for the corpus; BreadcrumbList throughout); CI test validating JSON-LD in built `dist/`; sitemap `lastmod` from data timestamps; methodology page linked from every directory footer; llms.txt/llms-full.txt extended to articles + directory; RSS for articles + a monthly changes feed; IndexNow ping on deploy; `_redirects` for renames; `noIndex` on filter views; per-page OG images (Satori) for hubs + claimed profiles at launch (file-count budget), all pages once on paid tier.
@@ -141,6 +143,7 @@ All gates run through one Cloudflare Worker seam + HubSpot Forms API; consent ch
 
 - **Open core** (CC BY 4.0, published in data repo + Dataset JSON-LD → Google Dataset Search): org identity (name, domain, slug), parent+child segment, advertised framework list, as-of date, profile URL.
 - **Proprietary enriched** (terms-of-use contract at every gate; never CC-released, preserving the one-way ratchet): compliance timelines, hiring signals, subprocessor graph + chain-trust, historical diffs/snapshots, registry cross-references, DNS posture scores.
+- **Third-party-licensed** (kept out of both tiers above, carrying their own terms): Wikipedia-sourced company summaries are CC BY-SA 4.0 — attributed to Wikipedia and never relicensed under the CC BY 4.0 core; LLM-generated summaries are original and follow whichever tier they are placed in. The `summarySource` field records provenance so downstream consumers can honor the right license.
 
 **Monetization paths preserved:** (1) self-serve segment exports $99–299 one-time; full enriched subscription $299–499/mo (BuiltWith anchor); enterprise/API licensing $10k–50k/yr (cyber insurers, TPRM platforms, compliance vendors). (2) RL/evals play: verifiable web-research environment graded against maintained ground truth; monthly refresh yields contamination-resistant eval sets; path = publish small open "TrustBench" cut for credibility, license commercial environment on demand. Year-two option; costs nothing to preserve. Steganographic fingerprinting of enriched exports for copy detection; no fictitious entries ever.
 
@@ -194,7 +197,7 @@ Tracked on the `synergergetic-solutions-site` issues board. Phases: **A = pipeli
 | TI-01 | [#9](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/9) | A | Scaffold private pipeline repo + NAS Docker runner (`nas-heavy`) | §3, DEC-09, NFR-4 |
 | TI-02 | [#10](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/10) | A | Discovery: CC host-index pull (DuckDB/HTTPS) + DNS sweep + vendor CNAME classification | FR-D1..D4 |
 | TI-03 | [#11](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/11) | A | Extraction: four vendor parsers + framework taxonomy + fixtures in CI | FR-E1, E2, E4 |
-| TI-04 | [#12](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/12) | A | Enrichment: identity spine (incl. BuiltWith link) + registries + security.txt + DNS posture | FR-N1..N3 |
+| TI-04 | [#12](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/12) | A | Enrichment: identity spine (incl. BuiltWith link) + registries + security.txt + DNS posture + company summaries (Wikipedia→LLM) | FR-N1..N3, N7 |
 | TI-05 | [#13](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/13) | A | Enrichment: compliance timelines (Wayback/CC) + hiring signals | FR-N4, N5 |
 | TI-06 | [#14](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/14) | A | Subprocessor graph + chain-trust metric | FR-E3 |
 | TI-07 | [#15](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/15) | A | LLM segment classification (12/40 two-level taxonomy) | FR-N6, DEC-04 |
