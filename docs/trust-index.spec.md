@@ -214,4 +214,4 @@ Dependencies: 2→3→(4,5,6,7 parallel)→8; 10 needs 8's first release; 11,12 
 
 ---
 
-*This spec's canonical home moves to the public data repo's `docs/` once that repo is scaffolded (issue #9). Decisions cite the 2026-08-25 design session and spike results.*
+*Canonical home: [trust-index-data/docs/trust-index.spec.md](https://github.com/Maverick-Coders/trust-index-data/blob/main/docs/trust-index.spec.md) (this local copy is a mirror). Decisions cite the 2026-08-25 design session and spike results.*
