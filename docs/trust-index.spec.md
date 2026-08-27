@@ -48,8 +48,13 @@ One project serves all three practice buckets:
 | DEC-10 | Hosting: stay on Cloudflare Pages; free tier ≤ ~15k files, then paid (100k limit, `PAGES_WRANGLER_MAJOR_VERSION=4`) | Limit is now purchasable; no migration needed; keep dist/ host-neutral |
 | DEC-11 | Issue tracker is an inbox, never a store; validated submissions materialize as committed override files | Snapshots stay self-contained; no replaying the tracker |
 | DEC-12 | Launch target 3,000–6,000 profiles; projected universe 5,000–12,000 | Measured: 307 vendor-CNAME hits in Tranco top 30k + CDN-fronted + tail + vendor-hosted |
+| DEC-14 | Discovery uses **four vectors**: multi-crawl Common Crawl union + domain-list DNS sweep + subprocessor snowball, over subdomain prefixes `trust/security/compliance/trustcenter/trust-center` | Each vector covers a different miss: crawl coverage, `noindex` pages, and net-new companies. `status.` dropped (0 trust-center yield). Vendor-hosted-portal and security.txt-via-crawl vectors probed and found weak (noindex; rarely crawled) |
+| DEC-15 | Registries built: **FedRAMP + EU-US DPF** (open JSON); CSA STAR and Visa PCI deferred | CSA STAR is reCAPTCHA-gated, Visa PCI is a bulk file. Matching is exact on a normalized name key (domain stem + company name) — high-precision to avoid mis-attributing a certification |
+| DEC-16 | A **data-quality gate** runs before publish (completeness, validity, uniqueness, consistency, plausibility) and fails the release on defects | Caught malformed Tranco `_wildcard_.*`/bare-TLD seeds; added a `valid_domain()` filter in response |
 
 Spike evidence (2026-08-25): 60k DNS probes → 4,726 resolved hosts, 307 confirmed vendor CNAMEs (Vanta 129, SafeBase/Drata 143, Conveyor 25, others); extraction validated on all four major vendor templates (Vanta via same-host GraphQL `fetchDataForTrustReport`); Wayback first-archive dates for 4/6 sampled trust centers; Wikidata: 17/24 entities, 13 with Crunchbase org ID (P2088); security.txt adoption 71/300 top domains; ISO 42001 already present on Rippling and OpenAI trust pages; Greenhouse public job API validated (Mercury, Sendbird).
+
+**Build results (2026-08-27)** — pipeline stages TI-02..TI-08 built in `trust-index-pipeline` (discover → extract → enrich → publish → quality), all validated live on Common Crawl CC-MAIN-2026-34..21. Discovery: 4-crawl union 3,935 entities; + Tranco top-20k sweep +194 new; + snowball (60-host sample) +11 new → **6,194 distinct entities** after the `valid_domain` cleanup (62 malformed removed). Extraction: 3 vendor API clients + HTML fallback; a 150-host sample gave 73% with frameworks. Enrichment: identity/summaries/timelines/posture/hiring/registries — 150-host sample 91% summaries, 100% vendor, all values valid/unique/consistent (0 quality FAILs). Prefix yield probe (Tranco top-8k): trust 119, security 17, compliance 7, trustcenter 5. Method detail in the pipeline repo's `docs/methods.md`. Still pending on TI-08: GCS upload with lifecycle tiering, BigQuery external table, and the versioned release PR to `trust-index-data`.
 
 ---
 
@@ -214,6 +219,22 @@ Tracked on the `synergergetic-solutions-site` issues board. Phases: **A = pipeli
 All v1 items (TI-01..TI-15) are on milestone **Trust Index v1**; TI-16 is unmilestoned backlog. Label: `trust-index`.
 
 Dependencies: 2→3→(4,5,6,7 parallel)→8; 10 needs 8's first release; 11,12 follow 10; 9 independent after 1; 13,14 need 10.
+
+### Build status (as of 2026-08-27)
+
+Pipeline (`trust-index-pipeline`), method detail in that repo's `docs/methods.md`:
+
+- **TI-01** ◑ pipeline project scaffolded (uv, CLI, CI); NAS self-hosted runner is the remaining manual step.
+- **TI-02** ✅ built — four discovery vectors (multi-crawl union, domain-list sweep, subprocessor snowball) over the widened prefix set.
+- **TI-03** ✅ built — Vanta / SafeBase-Drata / Conveyor API clients + HTML fallback; parse logic unit-tested.
+- **TI-04** ✅ built — Wikidata identity, security.txt + DNS posture, summaries (Wikipedia→homepage), registries (FedRAMP + EU-US DPF; CSA STAR/Visa deferred, DEC-15). BuiltWith is a site-side link.
+- **TI-05** ✅ built — Wayback timelines + Greenhouse hiring signals.
+- **TI-06** ◑ subprocessor extraction built (Vanta); the chain-trust metric is not yet computed.
+- **TI-07** ✗ not built — segment classification is not yet a pipeline stage (hand-done in the POC).
+- **TI-08** ◑ built without the cloud tail — merge + dated Parquet snapshot + derived site JSON done; GCS upload/lifecycle, BigQuery external table, and the release PR to `trust-index-data` are pending.
+- **Data-quality gate** ✅ built (`quality` command, DEC-16), not a numbered ticket.
+
+Site/claims/lead-magnet tracks (TI-09..TI-16) exist as a POC on the `trust-index-poc` branch of the site repo (routes, profiles, filters, segment, summaries, SEO/JSON-LD), pending productionization against a pipeline-produced release.
 
 ---
 
