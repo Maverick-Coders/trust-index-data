@@ -1,0 +1,58 @@
+name: Request a correction
+description: Correct a factual detail on a Trust Index profile, citing public evidence.
+title: "[correction] "
+labels: [correction]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The Trust Index republishes what is **publicly observable**. A correction needs a
+        public page that shows the corrected value; an automated check verifies the citation,
+        then a maintainer reviews. Claims that are not publicly verifiable are not published —
+        if your posture changed, publish it on your trust center and the next monthly refresh
+        will pick it up.
+  - type: input
+    id: domain
+    attributes:
+      label: Company domain
+      description: The registrable domain of the profile, exactly as it appears in the profile URL.
+      placeholder: acme.io
+    validations:
+      required: true
+  - type: dropdown
+    id: field
+    attributes:
+      label: Field to correct
+      options:
+        - name
+        - segment
+        - frameworks
+        - founded
+        - industry
+        - crunchbase
+        - linkedin
+        - firstObserved
+    validations:
+      required: true
+  - type: input
+    id: value
+    attributes:
+      label: Corrected value
+      description: "For frameworks: a comma-separated list replacing the current list. For founded: a 4-digit year."
+      placeholder: "2016"
+    validations:
+      required: true
+  - type: input
+    id: evidence
+    attributes:
+      label: Public evidence URL
+      description: An https:// page where the corrected value is visible.
+      placeholder: https://acme.io/about
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+    validations:
+      required: false

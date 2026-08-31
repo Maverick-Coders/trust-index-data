@@ -1,0 +1,74 @@
+name: verify-correction
+
+# TI-09 / FR-C2: when a correction issue cites public evidence, verify the
+# citation and open an overrides PR. A human always merges (DEC-11: the
+# tracker is an inbox, never a store). Runs only on GitHub-hosted runners —
+# never self-hosted (DEC-09).
+#
+# Issue content is untrusted data: it reaches the script via env vars only,
+# is never interpolated into shell text, and the script validates the domain
+# before using it in any path.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: correction-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: contains(github.event.issue.labels.*.name, 'correction')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        run: python3 scripts/test_verify_correction.py
+
+      - name: Verify evidence and stage override
+        id: verify
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: python3 scripts/verify_correction.py
+
+      - name: Open overrides PR
+        if: steps.verify.outputs.verified == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOMAIN: ${{ steps.verify.outputs.domain }}
+          OVERRIDE_PATH: ${{ steps.verify.outputs.path }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          BRANCH="correction/issue-${ISSUE_NUMBER}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add "$OVERRIDE_PATH"
+          git commit -m "Override for ${DOMAIN} (correction #${ISSUE_NUMBER})"
+          git push -f origin "$BRANCH"
+          gh pr create \
+            --title "Correction: ${DOMAIN} (#${ISSUE_NUMBER})" \
+            --body "Automated evidence check passed for #${ISSUE_NUMBER}. Review the cited evidence in the override file before merging; corrections deploy on merge." \
+            --head "$BRANCH" || true
+
+      - name: Report back on the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          MESSAGE: ${{ steps.verify.outputs.message }}
+          VERIFIED: ${{ steps.verify.outputs.verified }}
+        run: |
+          if [ "$VERIFIED" = "true" ]; then
+            gh issue comment "$ISSUE_NUMBER" --body "✔ Automated evidence check passed — $MESSAGE A maintainer will review the pull request; the correction deploys when it merges."
+          else
+            gh issue comment "$ISSUE_NUMBER" --body "✘ Automated evidence check did not pass — $MESSAGE You can edit this issue to fix the details and the check will run again."
+          fi
