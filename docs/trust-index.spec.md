@@ -51,6 +51,7 @@ One project serves all three practice buckets:
 | DEC-14 | Discovery uses **four vectors**: multi-crawl Common Crawl union + domain-list DNS sweep + subprocessor snowball, over subdomain prefixes `trust/security/compliance/trustcenter/trust-center` | Each vector covers a different miss: crawl coverage, `noindex` pages, and net-new companies. `status.` dropped (0 trust-center yield). Vendor-hosted-portal and security.txt-via-crawl vectors probed and found weak (noindex; rarely crawled) |
 | DEC-15 | Registries built: **FedRAMP + EU-US DPF** (open JSON); CSA STAR and Visa PCI deferred | CSA STAR is reCAPTCHA-gated, Visa PCI is a bulk file. Matching is exact on a normalized name key (domain stem + company name) — high-precision to avoid mis-attributing a certification |
 | DEC-16 | A **data-quality gate** runs before publish (completeness, validity, uniqueness, consistency, plausibility) and fails the release on defects | Caught malformed Tranco `_wildcard_.*`/bare-TLD seeds; added a `valid_domain()` filter in response |
+| DEC-17 | **Registry cross-referencing removed** (2026-08-31); supersedes DEC-15. FR-N2 suspended | Sample audit found the sole FedRAMP match was a false positive (`artera.ai` vs FedRAMP's Artera at artera.io) and a DPF match unverifiable (`assembly.com` vs "Assembly") — stem-only matching mis-attributes on dictionary-word stems, the exact defamation risk DEC-15 tried to avoid. Reinstatement requires name-key corroboration + a matched-pair audit; implementation preserved in pipeline git history |
 
 Spike evidence (2026-08-25): 60k DNS probes → 4,726 resolved hosts, 307 confirmed vendor CNAMEs (Vanta 129, SafeBase/Drata 143, Conveyor 25, others); extraction validated on all four major vendor templates (Vanta via same-host GraphQL `fetchDataForTrustReport`); Wayback first-archive dates for 4/6 sampled trust centers; Wikidata: 17/24 entities, 13 with Crunchbase org ID (P2088); security.txt adoption 71/300 top domains; ISO 42001 already present on Rippling and OpenAI trust pages; Greenhouse public job API validated (Mercury, Sendbird).
 
@@ -93,7 +94,7 @@ Spike evidence (2026-08-25): 60k DNS probes → 4,726 resolved hosts, 307 confir
 
 ### Enrichment
 - **FR-N1**: The pipeline shall resolve each organization's identity via Wikidata (P856 homepage match) capturing QID, Crunchbase org ID (P2088), LinkedIn (P4264), industry, founding year, HQ, ticker, LEI; fallback: homepage schema.org/footer link extraction, then Common Crawl existence check for `crunchbase.com/organization/{slug}`. Crunchbase is linked, never scraped. A deterministic BuiltWith profile link (`builtwith.com/{domain}`) is included link-only; BuiltWith data is never scraped (phase 2 may self-detect a security-relevant tech subset from already-fetched homepages via an open fingerprint DB).
-- **FR-N2**: The pipeline shall cross-reference public registries: CSA STAR, Visa Global Registry (PCI), FedRAMP Marketplace, EU-US DPF participant list.
+- **FR-N2** *(suspended per DEC-17)*: The pipeline shall cross-reference public registries: CSA STAR, Visa Global Registry (PCI), FedRAMP Marketplace, EU-US DPF participant list. Reinstatement requires a matcher with name-key corroboration and an audited false-positive rate.
 - **FR-N3**: The pipeline shall fetch and parse `/.well-known/security.txt` and compute a DNS posture score (SPF, DMARC, DNSSEC).
 - **FR-N4**: The pipeline shall compute compliance timelines: earliest observed trust center via Wayback CDX, backfilled from Common Crawl historical indexes, expressed strictly as "first observed".
 - **FR-N5**: The pipeline shall detect GRC hiring signals via public Greenhouse/Lever/Ashby board APIs (titles matching compliance/GRC/security/risk/privacy/trust).
@@ -202,7 +203,7 @@ Tracked on the `synergergetic-solutions-site` issues board. Phases: **A = pipeli
 | TI-01 | [#9](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/9) | A | Scaffold private pipeline repo + NAS Docker runner (`nas-heavy`) | §3, DEC-09, NFR-4 |
 | TI-02 | [#10](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/10) | A | Discovery: CC host-index pull (DuckDB/HTTPS) + DNS sweep + vendor CNAME classification | FR-D1..D4 |
 | TI-03 | [#11](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/11) | A | Extraction: four vendor parsers + framework taxonomy + fixtures in CI | FR-E1, E2, E4 |
-| TI-04 | [#12](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/12) | A | Enrichment: identity spine (incl. BuiltWith link) + registries + security.txt + DNS posture + company summaries (Wikipedia→LLM) | FR-N1..N3, N7 |
+| TI-04 | [#12](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/12) | A | Enrichment: identity spine (incl. BuiltWith link) + security.txt + DNS posture + company summaries (Wikipedia→LLM); registries removed per DEC-17 | FR-N1, N3, N7 |
 | TI-05 | [#13](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/13) | A | Enrichment: compliance timelines (Wayback/CC) + hiring signals | FR-N4, N5 |
 | TI-06 | [#14](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/14) | A | Subprocessor graph + chain-trust metric | FR-E3 |
 | TI-07 | [#15](https://github.com/Maverick-Coders/synergergetic-solutions-site/issues/15) | A | LLM segment classification (12/40 two-level taxonomy) | FR-N6, DEC-04 |
@@ -227,7 +228,7 @@ Pipeline (`trust-index-pipeline`), method detail in that repo's `docs/methods.md
 - **TI-01** ◑ pipeline project scaffolded (uv, CLI, CI); NAS self-hosted runner is the remaining manual step.
 - **TI-02** ✅ built — four discovery vectors (multi-crawl union, domain-list sweep, subprocessor snowball) over the widened prefix set.
 - **TI-03** ✅ built — Vanta / SafeBase-Drata / Conveyor API clients + HTML fallback; parse logic unit-tested.
-- **TI-04** ✅ built — Wikidata identity, security.txt + DNS posture, summaries (Wikipedia→homepage), registries (FedRAMP + EU-US DPF; CSA STAR/Visa deferred, DEC-15). BuiltWith is a site-side link.
+- **TI-04** ✅ built — Wikidata identity, security.txt + DNS posture, summaries (Wikipedia→homepage). BuiltWith is a site-side link. Registries were built, then removed after a false-positive audit (DEC-17).
 - **TI-05** ✅ built — Wayback timelines + Greenhouse hiring signals.
 - **TI-06** ◑ subprocessor extraction built (Vanta); the chain-trust metric is not yet computed.
 - **TI-07** ✗ not built — segment classification is not yet a pipeline stage (hand-done in the POC).
