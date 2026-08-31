@@ -232,7 +232,7 @@ Pipeline (`trust-index-pipeline`), method detail in that repo's `docs/methods.md
 - **TI-05** ✅ built — Wayback timelines + Greenhouse hiring signals.
 - **TI-06** ✅ built — subprocessor extraction (Vanta) + chain-trust metric computed at publish (share of disclosed subprocessors present in the index; URL→registrable-domain matching only, undercounts rather than fabricates). Method: pipeline `docs/chain-trust.md`. On the 2026-08-31 release: 1,037 orgs, 11,106 edges, median share 67%.
 - **TI-07** ✗ not built — segment classification is not yet a pipeline stage (hand-done in the POC).
-- **TI-08** ◑ built without the cloud tail — merge + dated Parquet snapshot + derived site JSON done; GCS upload/lifecycle, BigQuery external table, and the release PR to `trust-index-data` are pending.
+- **TI-08** ✅ built — merge + dated Parquet snapshot + derived site JSON; GCS upload with Coldline/Archive lifecycle (`gs://trust-index-synergetic-data`, keyless WIF auth from the refresh workflow); BigQuery external table `trust_index.snapshots`; monthly cron (the 3rd, 06:00 UTC) resolving the newest Common Crawl indexes live; open-core CC BY 4.0 release (`trust-index-open.json`) cut at publish and PR'd into `data/open/` each refresh (human merge). Prior release for slug freeze + incremental classify is fetched from GCS with the committed seed as fallback.
 - **Data-quality gate** ✅ built (`quality` command, DEC-16), not a numbered ticket.
 
 Site/claims/lead-magnet tracks (TI-09..TI-16) exist as a POC on the `trust-index-poc` branch of the site repo (routes, profiles, filters, segment, summaries, SEO/JSON-LD), pending productionization against a pipeline-produced release.
