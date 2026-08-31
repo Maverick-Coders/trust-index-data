@@ -230,7 +230,7 @@ Pipeline (`trust-index-pipeline`), method detail in that repo's `docs/methods.md
 - **TI-03** ✅ built — Vanta / SafeBase-Drata / Conveyor API clients + HTML fallback; parse logic unit-tested.
 - **TI-04** ✅ built — Wikidata identity, security.txt + DNS posture, summaries (Wikipedia→homepage). BuiltWith is a site-side link. Registries were built, then removed after a false-positive audit (DEC-17).
 - **TI-05** ✅ built — Wayback timelines + Greenhouse hiring signals.
-- **TI-06** ◑ subprocessor extraction built (Vanta); the chain-trust metric is not yet computed.
+- **TI-06** ✅ built — subprocessor extraction (Vanta) + chain-trust metric computed at publish (share of disclosed subprocessors present in the index; URL→registrable-domain matching only, undercounts rather than fabricates). Method: pipeline `docs/chain-trust.md`. On the 2026-08-31 release: 1,037 orgs, 11,106 edges, median share 67%.
 - **TI-07** ✗ not built — segment classification is not yet a pipeline stage (hand-done in the POC).
 - **TI-08** ◑ built without the cloud tail — merge + dated Parquet snapshot + derived site JSON done; GCS upload/lifecycle, BigQuery external table, and the release PR to `trust-index-data` are pending.
 - **Data-quality gate** ✅ built (`quality` command, DEC-16), not a numbered ticket.
